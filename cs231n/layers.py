@@ -607,6 +607,78 @@ def spatial_batchnorm_backward(dout, cache):
     return dx, dgamma, dbeta
 
 
+def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
+ 
+    out, cache = None, None
+    eps = gn_param.get('eps',1e-5)
+    ###########################################################################
+    # TODO: Implement the forward pass for spatial group normalization.       #
+    # This will be extremely similar to the layer norm implementation.        #
+    # In particular, think about how you could transform the matrix so that   #
+    # the bulk of the code is similar to both train-time batch normalization  #
+    # and layer normalization!                                                # 
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    N, C, H, W = x.shape
+    size = (N*G, C//G *H*W)
+    temp = x.reshape(size).T
+    mean = np.mean(temp, 0)
+    var = np.var(temp, 0) + eps
+    std = np.sqrt(var)
+    temp = (temp - mean)/std
+    temp = temp.T.reshape(N, C, H, W)
+    out = gamma * temp + beta
+    cache = {'x':x, 'gamma':gamma, 'mean':mean,
+                 'std':std, 'u_out':temp, 'size':size}
+
+    # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    ###########################################################################
+    #                             END OF YOUR CODE                            #
+    ###########################################################################
+    return out, cache
+
+def spatial_groupnorm_backward(dout, cache):
+    """
+    Computes the backward pass for spatial group normalization.
+    Inputs:
+    - dout: Upstream derivatives, of shape (N, C, H, W)
+    - cache: Values from the forward pass
+    Returns a tuple of:
+    - dx: Gradient with respect to inputs, of shape (N, C, H, W)
+    - dgamma: Gradient with respect to scale parameter, of shape (C,)
+    - dbeta: Gradient with respect to shift parameter, of shape (C,)
+    """
+    dx, dgamma, dbeta = None, None, None
+
+    ###########################################################################
+    # TODO: Implement the backward pass for spatial group normalization.      #
+    # This will be extremely similar to the layer norm implementation.        #
+    ###########################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    x = cache['x']
+    mean = cache['mean']
+    std = cache['std'] 
+    u_out = cache['u_out']
+    gamma = cache['gamma']
+    size = cache['size']
+
+    dbeta  = dout.sum(axis = (0,2,3), keepdims = True)
+    dgamma = (u_out*dout).sum(axis = (0,2,3), keepdims = True)
+    du_out = (gamma*dout).reshape(size).T
+    u_out = u_out.reshape(size).T
+    M = size[1]
+    
+    dx = du_out/std - du_out.sum(0)/(M*std) - np.sum(du_out*u_out/std, 0)*u_out/M 
+    dx = dx.T.reshape(x.shape)
+
+    # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    ###########################################################################
+    #                             END OF YOUR CODE                            #
+    ###########################################################################
+    return dx, dgamma, dbeta
+
 def svm_loss(x, y):
     """
     Computes the loss and gradient using for multiclass SVM classification.
