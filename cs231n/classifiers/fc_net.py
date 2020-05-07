@@ -130,7 +130,7 @@ class FullyConnectedNet(object):
     """
 
     def __init__(self, hidden_dims, input_dim=3*32*32, num_classes=10,
-                 dropout=1, normalization=None, reg=0.0,
+                 dropout=0, normalization=None, reg=0.0,
                  weight_scale=1e-2, dtype=np.float32, seed=None):
         """
         Initialize a new FullyConnectedNet.
@@ -153,7 +153,7 @@ class FullyConnectedNet(object):
           model.
         """
         self.normalization = normalization
-        self.use_dropout = dropout != 1
+        self.use_dropout = dropout > 0
         self.reg = reg
         self.num_layers = 1 + len(hidden_dims)
         self.dtype = dtype
